@@ -2,110 +2,95 @@ import data from "./data.js";
 
 let startPoint;
 let endPoint;
-let visitedNodes = [];
 
 let labelledGraph = [
-  { name: "a", value: Infinity, previousVertex: "", path: " " },
-  { name: "b", value: Infinity, previousVertex: "", path: " " },
-  { name: "c", value: Infinity, previousVertex: "", path: " " },
-  { name: "d", value: Infinity, previousVertex: "", path: " " },
-  { name: "e", value: Infinity, previousVertex: "", path: " " },
-  { name: "f", value: Infinity, previousVertex: "", path: " " },
-  { name: "g", value: Infinity, previousVertex: "", path: " " },
-  { name: "h", value: Infinity, previousVertex: "", path: " " }
+  { name: "a", value: Infinity, path: [], visited: false },
+  { name: "b", value: Infinity, path: [], visited: false },
+  { name: "c", value: Infinity, path: [], visited: false },
+  { name: "d", value: Infinity, path: [], visited: false },
+  { name: "e", value: Infinity, path: [], visited: false },
+  { name: "f", value: Infinity, path: [], visited: false },
+  { name: "g", value: Infinity, path: [], visited: false },
+  { name: "h", value: Infinity, path: [], visited: false }
 ];
 
-export const initializeData = startPoint => {
-  let index = labelledGraph.findIndex(node => node.name === startPoint);
-  labelledGraph.splice(index, 1, { name: startPoint, value: 0 });
-  return labelledGraph;
+const getIndexByPointName = (pointName, dataSet) => {
+  let index = dataSet.findIndex(node => node.name == pointName);
+  return index;
 };
 
-// getIndexByPointName = (pointName, dataSet) => {
-//   let index = labelledGraph.findIndex(node => node.name == pointName);
-//   return value;
-// };
-
-const checkNeighbours = point => {
-  let index = data.findIndex(node => node.name === point);
-  let pointValue =
-    labelledGraph[labelledGraph.findIndex(node => node.name == point)].value;
-  let neighbourDetails = data[index].neighbours;
-  neighbourDetails.forEach(neighbour => {
-    let index = labelledGraph.findIndex(node => node.name === neighbour.name);
-    let neighbourValue = Math.min(
-      labelledGraph[index].value,
-      pointValue + neighbour.value
-    );
-    let previousVertex =
-      labelledGraph[index].value > pointValue + neighbourValue
-        ? point
-        : labelledGraph[index].previousVertex;
-
-    // let path =
-    //   labelledGraph[index].value > pointValue + neighbourValue
-    //     ? `${labelledGraph[index].path} ${point}`
-    //     : labelledGraph[index].path;
-
-    labelledGraph.splice(index, 1, {
-      name: neighbour.name,
-      value: neighbourValue,
-      previousVertex: previousVertex
-    });
+const initializeGraph = startPoint => {
+  let index = getIndexByPointName(startPoint, labelledGraph);
+  labelledGraph.splice(index, 1, {
+    name: startPoint,
+    value: 0,
+    path: [startPoint],
+    visited: false
   });
-  visitedNodes.push(point);
-  console.log(visitedNodes);
-  return labelledGraph, visitedNodes;
 };
 
-const sortLabelledGraphByValue = () => {
-  labelledGraph = labelledGraph.sort((node1, node2) =>
-    node1.value > node2.value ? 1 : -1
+const visitNode = node => {
+  let unvisitedNodes = labelledGraph.filter(
+    x =>
+      labelledGraph[getIndexByPointName(x.name, labelledGraph)].visited ===
+      false
   );
-  return labelledGraph;
-};
+  if (unvisitedNodes.length > 1) {
+    let index = getIndexByPointName(node, data);
+    let nodeDistance = labelledGraph[index].value;
+    let nodePath = labelledGraph[index].path;
 
-const findNextPoint = () => {
-  let index = labelledGraph.findIndex(
-    node => visitedNodes.includes(node.name) === false
-  );
-  let point = labelledGraph[index].name;
-  return point;
-};
-const getPath = (startPoint, endPoint) => {
-  let point = endPoint;
-  let path = endPoint;
-  let getPoint;
-  let previousVertex;
-  while (point !== startPoint) {
-    getPoint =
-      labelledGraph[labelledGraph.findIndex(node => point === node.name)];
-    previousVertex = getPoint.previousVertex;
-    path = `${previousVertex}, ${path}`;
-    point = previousVertex;
+    data[index].neighbours.forEach(adjacentNode => {
+      let adjacentNodeIndex = getIndexByPointName(
+        adjacentNode.name,
+        labelledGraph
+      );
+      let adjacentNodeName = labelledGraph[adjacentNodeIndex].name;
+      let adjacentNodeDistance = labelledGraph[adjacentNodeIndex].value;
+      let edgeWeight = adjacentNode.value;
+
+      if (adjacentNodeDistance > nodeDistance + edgeWeight) {
+        labelledGraph.splice(adjacentNodeIndex, 1, {
+          name: adjacentNodeName,
+          value: nodeDistance + edgeWeight,
+          path: nodePath.concat(adjacentNodeName),
+          visited: false
+        });
+      }
+    });
+    labelledGraph[index].visited = true;
+    let orderedUnvisitedNodes = labelledGraph
+      .filter(
+        x =>
+          labelledGraph[getIndexByPointName(x.name, labelledGraph)].visited ===
+          false
+      )
+      .sort((x1, x2) => (x1.value > x2.value ? 1 : -1));
+    let nextToVisit =
+      orderedUnvisitedNodes.length > 0
+        ? orderedUnvisitedNodes[0].name
+        : console.log("no nodes left");
+    visitNode(nextToVisit);
+  } else {
+    return labelledGraph;
   }
-  return path;
 };
 
 const fullProcess = (startPoint, endPoint) => {
-  initializeData(startPoint);
-  checkNeighbours(startPoint);
-  while (labelledGraph.filter(item => item.previousVertex === "").length > 0) {
-    sortLabelledGraphByValue();
-    findNextPoint();
-    checkNeighbours(findNextPoint());
-  }
-  console.log(labelledGraph);
+  initializeGraph(startPoint);
+  visitNode(startPoint);
   let response = `Shortest path is of length ${
-    labelledGraph[labelledGraph.findIndex(node => endPoint === node.name)].value
-  } and follows the route: ${getPath(startPoint, endPoint)}`;
+    labelledGraph[getIndexByPointName(endPoint, labelledGraph)].value
+  } and follows the route: ${
+    labelledGraph[getIndexByPointName(endPoint, labelledGraph)].path
+  } `;
   return response;
 };
 
 const submit = () => {
   startPoint = document.getElementById("start").value;
   endPoint = document.getElementById("end").value;
-  console.log(fullProcess(startPoint, endPoint));
+
   document.getElementById("output").innerHTML = fullProcess(
     startPoint,
     endPoint
